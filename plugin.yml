@@ -1,0 +1,8 @@
+name: PlotSquaredMG
+main: com.boydti.psmg.MGMain
+version: 1
+load: STARTUP
+description: An optimized plot generator
+authors: [Empire92]
+depend: [PlotSquared]
+database: false
