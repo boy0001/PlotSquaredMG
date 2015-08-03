@@ -28,7 +28,9 @@ import org.bukkit.util.FileUtil;
 
 import com.boydti.psmg.MGMain;
 import com.boydti.psmg.generator.MegaPlotWorld;
-import com.intellectualcrafters.plot.PlotSquared;
+import com.intellectualcrafters.plot.PS;
+import com.intellectualcrafters.plot.commands.CommandCategory;
+import com.intellectualcrafters.plot.commands.RequiredType;
 import com.intellectualcrafters.plot.commands.SubCommand;
 import com.intellectualcrafters.plot.config.C;
 import com.intellectualcrafters.plot.config.Configuration;
@@ -41,17 +43,20 @@ import com.intellectualcrafters.plot.object.PlotWorld;
 import com.intellectualcrafters.plot.object.SetupObject;
 import com.intellectualcrafters.plot.util.MainUtil;
 import com.intellectualcrafters.plot.util.SetupUtils;
-
+import com.plotsquared.general.commands.CommandDeclaration;
+@CommandDeclaration(
+        command = "copyregion",
+        permission = "plots.copyregion",
+        category = CommandCategory.ACTIONS,
+        requiredType = RequiredType.NONE,
+        description = "Copy plot regions",
+        usage = "/plot copyregion <template>"
+)
 public class CopyRegions extends SubCommand {
     public static String downloads, version;
 
-    public CopyRegions() {
-        super("copyregion", "plots.copyregion", "Copy plot regions", "copyregion <template>", "copyregions", CommandCategory.DEBUG, true);
-    }
-
-
     @Override
-    public boolean execute(final PlotPlayer plr, final String... args) {
+    public boolean onCommand(final PlotPlayer plr, final String... args) {
         if (args.length < 1) {
             MainUtil.sendMessage(plr, C.COMMAND_SYNTAX, "/plot copyregion <world>");
             return false;
@@ -60,73 +65,70 @@ public class CopyRegions extends SubCommand {
         if (args.length == 2) {
             if (args[2].equalsIgnoreCase("-g")) {
                 generate = false;
-            }
-            else {
+            } else {
                 MainUtil.sendMessage(plr, C.COMMAND_SYNTAX, "/plot copyregion <world> [-g]");
                 MainUtil.sendMessage(plr, "The -g argument is optional, and will only copy the .mca files, but not generate the world");
                 return false;
-                
+
             }
         }
-        File dest = new File(MGMain.plugin.getDataFolder() + File.separator + "worlds" + File.separator + args[0]);
-        Plot plot = MainUtil.getPlot(plr.getLocation());
-        if (plot ==  null) {
+        final File dest = new File(MGMain.plugin.getDataFolder() + File.separator + "worlds" + File.separator + args[0]);
+        final Plot plot = MainUtil.getPlot(plr.getLocation());
+        if (plot == null) {
             MainUtil.sendMessage(plr, "You need to be standing in a plot to use that command");
             return false;
         }
-        PlotWorld pw = PlotSquared.getPlotWorld(plot.world);
+        final PlotWorld pw = PS.get().getPlotWorld(plot.world);
         if (!(pw instanceof SquarePlotWorld)) {
             MainUtil.sendMessage(plr, "INVALID PLOT WORLD!");
             return false;
         }
-        File newWorldFolder = new File(Bukkit.getWorldContainer() + File.separator + args[0]);
+        final File newWorldFolder = new File(Bukkit.getWorldContainer() + File.separator + args[0]);
         if (newWorldFolder.exists()) {
             MainUtil.sendMessage(plr, "World is already taken, please delete it or choose a new name.");
             return false;
         }
-        
-        SquarePlotWorld spw = (SquarePlotWorld) pw;
-        if ((spw.PLOT_WIDTH + spw.ROAD_WIDTH) % 512 != 0) {
+
+        final SquarePlotWorld spw = (SquarePlotWorld) pw;
+        if (((spw.PLOT_WIDTH + spw.ROAD_WIDTH) % 512) != 0) {
             MainUtil.sendMessage(plr, "Plot width + Road width is not multiple of 512: ");
             MainUtil.sendMessage(plr, spw.PLOT_WIDTH + " + " + spw.ROAD_WIDTH + " = " + (spw.PLOT_WIDTH + spw.ROAD_WIDTH));
             return false;
         }
-        int width = (spw.PLOT_WIDTH + spw.ROAD_WIDTH + 511) / 512;
+        final int width = (spw.PLOT_WIDTH + spw.ROAD_WIDTH + 511) / 512;
         if (dest.exists()) {
             MegaPlotWorld.deleteDirectory(dest);
         }
         dest.mkdirs();
-        
+
         Bukkit.getWorld(plot.world).save();
-        
+
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < width; j++) {
-                int x = (plot.id.x - 1) * width + i;
-                int z = (plot.id.y - 1) * width + j;
-                File region = MegaPlotWorld.getNewMca(plot.world, z, x);
-                File destRegion = new File(dest + File.separator + region.getName());
+                final int x = ((plot.id.x - 1) * width) + i;
+                final int z = ((plot.id.y - 1) * width) + j;
+                final File region = MegaPlotWorld.getNewMca(plot.world, z, x);
+                final File destRegion = new File(dest + File.separator + region.getName());
                 try {
                     destRegion.createNewFile();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     e.printStackTrace();
                 }
-                System.out.print("COPYING: " + region + " | " + destRegion);
                 FileUtil.copy(region, destRegion);
             }
         }
         if (generate) {
             MainUtil.sendMessage(plr, "Starting world creation...");
-            SetupObject setup = new SetupObject();
-            ConfigurationNode node = new ConfigurationNode("road.width", SquarePlotWorld.ROAD_WIDTH_DEFAULT, "Road width", Configuration.INTEGER, true);
+            final SetupObject setup = new SetupObject();
+            final ConfigurationNode node = new ConfigurationNode("road.width", SquarePlotWorld.ROAD_WIDTH_DEFAULT, "Road width", Configuration.INTEGER, true);
             node.setValue(spw.ROAD_WIDTH + "");
             setup.step = new ConfigurationNode[] { node };
             setup.world = args[0];
             setup.setupGenerator = "PlotSquaredMG";
-            String result = SetupUtils.manager.setupWorld(setup);
+            final String result = SetupUtils.manager.setupWorld(setup);
             plr.teleport(new Location(result, 0, 64, 0));
             MainUtil.sendMessage(plr, "&aCreated world!");
-        }
-        else {
+        } else {
             MainUtil.sendMessage(plr, "Done!");
         }
         return true;

@@ -1,6 +1,6 @@
 name: PlotSquaredMG
 main: com.boydti.psmg.MGMain
-version: 1
+version: 2.3.0
 load: STARTUP
 description: An optimized plot generator
 authors: [Empire92]
